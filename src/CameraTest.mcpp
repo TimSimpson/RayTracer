@@ -1,0 +1,32 @@
+~unit CameraTest type=test;
+
+~import boost::optional;
+~import LP3_ASSERT_EQUAL;
+~import Camera;
+~import World;
+~import Sphere;
+~import Vector3;
+
+~block "cpp" :=
+
+#include <RayTest.h>
+
+
+void tests()
+{
+    Camera camera;
+    camera.SetDirection(Vector3(1, 0, 0));
+    RAY_ASSERT_EQUAL(camera.up, Vector3(0, 1, 0));
+    RAY_ASSERT_EQUAL(camera.side, Vector3(0, 0, 1));
+    //RAY_ASSERT_EQUAL(camera.viewLeft, Vector3(0.707388, 0, -0.706825));
+    //RAY_ASSERT_EQUAL(camera.viewRight, Vector3(0.707388, 0, 0.706825));
+    //RAY_ASSERT_EQUAL(camera.viewUp, Vector3(0.904085, 0.427353, 0));
+    //RAY_ASSERT_EQUAL(camera.viewDown, Vector3(0.904085, 0.427353, 0));
+
+    optional<double> dist = Sphere(Vector3(0, 5, 0), 2).DistanceToIntersection(
+        Vector3(0, 0, 0),
+        Vector3(0, 1, 0));
+    RAY_ASSERT_EQUAL(!dist, false);
+    RAY_ASSERT_EQUAL(dist.get(), 3.0);
+
+}

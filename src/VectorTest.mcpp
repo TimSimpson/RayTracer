@@ -1,0 +1,37 @@
+~unit VectorTest type=test;
+
+~import LP3_ASSERT_EQUAL;
+~import Vector3;
+
+~block "cpp" :=
+
+#include <RayTest.h>
+
+
+void tests()
+{
+    // Should be zero if they're perpendicular.
+    RAY_ASSERT_EQUAL(DotProduct(Vector3(1, 0, 0), Vector3(0, 1, 0)), 0);
+
+    RAY_ASSERT_EQUAL(Vector3(1, 0, 0).Length(), 1);
+
+    RAY_ASSERT_EQUAL(Normalize(Vector3(1, 0, 0)).Length(), 1);
+
+    RAY_ASSERT_EQUAL(Normalize(Vector3(325.5, 45356, 35.43)).Length(), 1);
+
+    RAY_ASSERT_EQUAL(CrossProduct(Vector3(1, 8, 16), Vector3(76, 6, 4)),
+                     Vector3(-64, 1212, -602));
+
+    RAY_ASSERT_EQUAL(CrossProduct(Vector3(-68, -3, -376),
+                                  Vector3(-37, -8, 38)),
+                     Vector3(-3122, 16496, 433));
+
+    RAY_ASSERT_EQUAL(Vector3(1, 2, 3) + Vector3(4, 5, 6),
+                     Vector3(5, 7, 9));
+
+    RAY_ASSERT_EQUAL(Vector3(1, 2, 3) - Vector3(4, 5, 6),
+                     Vector3(-3, -3, -3));
+
+    RAY_ASSERT_EQUAL(Vector3(1, 2, 3) * 3,
+                     Vector3(3, 6, 9));
+}

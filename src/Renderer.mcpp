@@ -1,0 +1,9 @@
+~import Rgb;
+
+
+class Renderer
+{
+    public virtual ~Renderer(){}
+
+    public virtual void PSet(const unsigned int x, const unsigned int y, Rgb & rgb) = 0;
+};

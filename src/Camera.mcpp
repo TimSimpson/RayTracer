@@ -1,0 +1,128 @@
+~import BOOST_FOREACH;
+~import boost::optional;
+~import std::ostream;
+~import Renderer;
+~import Rgb;
+~import Vector3;
+~import std::vector;
+~import Screen;
+~import World;
+
+class Camera
+{
+    public double aspectRatio;
+    public Vector3 forward;
+    public double frustrum;
+    public Vector3 location;
+    public Vector3 side;  // Points out sideways towards positive X.
+    public Screen screen;
+    public Vector3 up;
+    public Vector3 viewDown;
+    public Vector3 viewLeft;
+    public Vector3 viewRight;
+    public Vector3 viewUp;
+
+    ~block "cpp" { namespace {
+        const double PI = 3.14;
+        const Vector3 WorldUp(0, 1, 0);  // Y up
+    }}
+
+    public Camera()
+    :   aspectRatio(0.5), //aspectRatio(1.0),
+        forward(0, 0, 0),
+        frustrum(PI / 4.0), // 90 degrees
+        location(0, 0, 0),
+        side(0, 0, 0),
+        screen(854, 427), //screen(600, 600), //screen(854, 480), // 640 x 480 + stuff to make it = 16 x 9
+        up(0, 0, 0),
+        viewDown(0, 0, 0),
+        viewLeft(0, 0, 0),
+        viewRight(0, 0, 0),
+        viewUp(0, 0, 0)
+    {
+        SetDirection(Vector3(0, 0, -1));
+    }
+
+    public void DrawScreen(World & world, Renderer & renderer)
+    {
+        for (unsigned int x = 0; x < screen.Width; x ++)
+        {
+            const double xInterp = (x / (double)screen.Width);
+            //const double xInterp = x / ((double)screen.Width);
+            // const Vector3 dirX = Normalize(
+            //    viewLeft * (1 - xInterp) + viewRight * xInterp);
+            for (unsigned int y = 0; y < screen.Height; y ++)
+            {
+                const double yInterp = (y / (double)screen.Height);
+                //const double yInterp = y / ((double)screen.Height);
+                //const Vector3 dirY = Normalize(
+                //    viewUp * (1 - yInterp) + viewDown * yInterp);
+                // dir is the direction of each pixel...
+                const auto dir = computeRay(xInterp, yInterp);
+                //const Vector3 dir = Normalize(dirX + dirY);
+                Rgb rgb = world.RayCast(location, dir);
+                // Y is pointed down, X points left, so flip it.
+                renderer.PSet(screen.Width - x, screen.Height - y, rgb);
+            } //end y
+        } //end x
+    } //end drawScreen function
+
+    /** Finds the angle of the ray shooting out of the camera at xInterp
+     *  and yInterp, which range from 0.0 to +1.0. These values relate to
+     *  the pixel cordinates of the eventual image. */
+    ~hidden Vector3 computeRay(const double xInterp, const double yInterp)
+    {
+        const double frustInterpX = (frustrum * -1.0) * (1.0 - xInterp)
+                                    + (frustrum * xInterp);
+        const double frustInterpY = (frustrum * -1.0 * aspectRatio)
+                                    * (1.0 - yInterp)
+                                    + (frustrum * aspectRatio * yInterp);
+        viewUp = Normalize(forward * cos(frustInterpY)
+                           + up * sin(frustInterpY));
+        const double xComponent = cos(frustInterpY);
+
+        viewRight = Normalize(forward * (cos(frustInterpX) * xComponent)
+                              + side * (sin(frustInterpX) * xComponent));
+        // Because these are on different axises, we can just add them.
+        const auto sum = viewUp + viewRight;
+        return Normalize(sum);
+    }
+
+    public void LookAt(const Vector3 & point)
+    {
+        SetDirection(Normalize(point - this->location));
+    }
+
+    public void SetDirection(const Vector3 & dir)
+    {
+        forward = Normalize(dir);
+        // If our eyes are the camera, we want the line going out our ears.
+        // Making our world up constant, ensures we don't tilt our head left
+        // or right.
+        side = Normalize(CrossProduct(forward, WorldUp));
+        // We can tilt our head forward and back (looking up and down).
+        up = Normalize(CrossProduct(forward, (side * -1.0)));
+        updateFrustrum();
+    }
+
+    public void SetLocation(const Vector3 & point)
+    {
+        location = point;
+    }
+
+    private void updateFrustrum()
+    {
+        const double frusY = frustrum * aspectRatio;
+        viewUp = Normalize(forward * cos(frusY) + up * sin(frusY));
+        viewDown = Normalize(forward * cos(frusY) - up * sin(frusY));
+        viewRight = Normalize(forward * cos(frustrum) + side * sin(frustrum));
+        viewLeft = Normalize(forward * cos(frustrum) - side * sin(frustrum));
+    }
+};
+
+
+
+
+
+
+

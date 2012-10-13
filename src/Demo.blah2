@@ -1,0 +1,51 @@
+~unit Demo type=exe;
+
+~import Lp3::Log::LogSystem;
+~import LP3_LOG_DEBUG;
+~import Lp3::Gfx::Ray::Burger;
+
+~block "cpp":=
+
+#pragma comment (lib, "user32.lib")
+#pragma comment (lib, "d2d1.lib")
+#pragma comment (lib, "dwrite.lib")
+#pragma comment (lib, "windowscodecs.lib")
+#pragma comment (lib, "dxgi.lib")
+#pragma comment (lib, "d3d10_1.lib")
+
+#include <windows.h>
+
+
+
+#include "SimpleDirect2dApplication.h"
+
+
+//
+// Provides the entry point to the application.
+//
+int WINAPI WinMain(
+    HINSTANCE /* hInstance */,
+    HINSTANCE /* hPrevInstance */,
+    LPSTR /* lpCmdLine */,
+    int /* nCmdShow */
+    )
+{
+    // Ignore the return value because we want to continue running even in the
+    // unlikely event that HeapSetInformation fails.
+    HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
+
+    if (SUCCEEDED(CoInitialize(NULL)))
+    {
+        {
+            DemoApp app;
+
+            if (SUCCEEDED(app.Initialize()))
+            {
+                app.RunMessageLoop();
+            }
+        }
+        CoUninitialize();
+    }
+
+    return 0;
+}

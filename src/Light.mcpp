@@ -1,0 +1,16 @@
+~import Rgb;
+~import Vector3;
+
+
+class Light
+{
+    public Rgb Color;
+    public Vector3 Location;
+    public double Radius;
+
+    public Light(const Rgb color, const Vector3 & location, double radius)
+    :   Color(color),
+        Location(location),
+        Radius(radius)
+    {}
+};

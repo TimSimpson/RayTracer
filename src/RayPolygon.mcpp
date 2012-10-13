@@ -1,0 +1,161 @@
+~import boost::optional;
+~import std::ostream;
+~import RayObject;
+~import Vector3;
+~import Vertex;
+
+~namespace Ray;
+
+class RayPolygon : public RayObject
+{
+    private Vector3 normal;
+    private Vertex vert0;
+    private Vertex vert1;
+    private Vertex vert2;
+
+    public RayPolygon(const Vector3 & a, const Vector3 & b, const Vector3 & c)
+    :   normal(0, 0, 0), vert0(a), vert1(b), vert2(c)
+    {
+        ComputeNormal();
+    }
+
+    /*public Polygon(const Vertex & a, const Vertex & b, const Vertex & c)
+    :   normal(0, 0, 0), vert0(a), vert1(b), vert2(c)
+    {
+        ComputeNormal();
+    }*/
+
+    ~hidden static double areaOfVerts(const Vector3 & a, const Vector3 & b,
+                                      const Vector3 & c)
+    {
+        // The cross product gets the area of a parallelogram, but one
+        // point has to the be the origin.
+        const auto p1 = b - a;
+        const auto p2 = c - a;
+        auto parallelogram = CrossProduct(p1, p2);
+        return parallelogram.Length() / 2.0;
+    }
+
+    public void ComputeNormal()
+    {
+        auto v1 = vert1.Position - vert0.Position;
+        auto v2 = vert2.Position - vert0.Position;
+        // Now 1 and 2 are relative to 0.
+        // (It's arbitrary and we could've picked any two points.)
+        // They form a plane. From that, the cross product tells us the
+        // normal.
+        normal = Normalize(CrossProduct(v1, v2));
+    }
+
+    public virtual const Vector3 GetNormalForLightReflection(
+        const Vector3 & intersection) const
+    {
+        // Eric says this is simple for now.
+        return normal;
+    }
+
+    public const Vertex & GetVertex0(int index) const
+    {
+        return vert0;
+    }
+
+    public const Vertex & GetVertex1(int index) const
+    {
+        return vert1;
+    }
+
+    public const Vertex & GetVertex2(int index) const
+    {
+        return vert2;
+    }
+
+    /* Determines the distance to where the given line intersects the
+     * polygon. */
+    public virtual optional<double> DistanceToIntersection(
+        const Vector3 &origin, const Vector3 & direction) const
+    {
+        const auto directionN = Normalize(direction);
+
+        // The points in this polygon define an infinite plane.
+        // The first goal is to determine where the line hits this plane.
+
+        // Subtract the origin (which is a vector from the center of
+        // world space to some point) from any of our vertices.
+        const auto v = origin - vert0.Position;
+        // Now, get the cross product of this new vector and the normal
+        // of this polygon...
+        const double distanceToPlane = DotProduct(v, this->normal);
+        // This is the closest possible distance from the origin to our plane.
+
+        // The line which gets us from origin to the plane the quickest is:
+        //const idealLine = this->normal * -1.0 * distanceToPlane + origin;
+        // It is actually where origin would touch the plane if it traveled
+        // the shortest route to get there.
+
+        // However, we don't want that line. We want the direction we were
+        // given. So we find the difference between the argument "direction"
+        // and this other vector.
+        //
+
+        // We need to find the projection of the direction onto the
+        // negative normal of the plane.
+        const auto dp = DotProduct(directionN, this->normal);
+        if (dp == 0)
+        {
+            // This means direction is parallel to the plane - it doesn't
+            // intersect.
+            return boost::none;
+        }
+        const auto scalingFactor = 1.0 / (dp * -1.0);
+        // Now multiply this scalingFactor by distanceToPlane.
+        const auto distanceOfDirection = scalingFactor * distanceToPlane;
+        // This is our intersection point.
+        const auto intersection = (directionN * distanceOfDirection) + origin;
+        if (!InsidePolygon(intersection))
+        {
+            return boost::none;
+        }
+        else
+        {
+            return distanceOfDirection; //intersection;
+        }
+    }
+
+    public virtual optional<Rgb> ForceColor() const
+    {
+        return Rgb(1.0, 0, 0);
+    }
+
+    private bool InsidePolygon(const Vector3 & intersection) const
+    {
+        //Problem #2 - now we have where in the plane where we intersect-
+        // but does it lie in the polygon?
+
+        //Imagine if the point lies in the polygon. If we draw a line
+        // from every vertex to this point, we'll have three polygons instead
+        // of one. For each of these new polygons, grab the area - if the
+        // point lay inside the original polygon, the sums of these areas
+        // will equal the sum of the area of the original.
+        const auto normalArea = areaOfVerts(
+            vert0.Position, vert1.Position, vert2.Position);
+
+        const auto altArea0 = areaOfVerts(
+            intersection, vert0.Position, vert1.Position);
+        const auto altArea1 = areaOfVerts(
+            intersection, vert0.Position, vert2.Position);
+        const auto altArea2 = areaOfVerts(
+            intersection, vert1.Position, vert2.Position);
+        const auto sum = altArea0 + altArea1 + altArea2;
+       // std::cout << "sum=" << sum << std::endl;
+       // std::cout << "normalArea=" << normalArea << std::endl;
+        if (sum <= normalArea + 0.0001)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+};

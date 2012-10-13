@@ -1,0 +1,4 @@
+class M_PI { ~hfile=<cmath> };
+class sqrt { ~hfile=<cmath> };
+class BOOST_FOREACH { ~hfile=<boost/foreach.hpp> };
+class boost::tuple { ~hfile=<boost/tuple/tuple.hpp> };

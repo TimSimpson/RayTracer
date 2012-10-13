@@ -1,0 +1,92 @@
+~import BOOST_FOREACH;
+~import boost::optional;
+~import RayObject;
+~import RayObjectPtr;
+~import RayTracer;
+~import Rgb;
+~import Sphere;
+~import boost::tuple;
+~import std::vector;
+
+
+class World
+{
+    ~block "cpp-include"
+    {
+        #include <limits>
+    }
+
+    private Rgb backgroundColor;
+    private vector<Light> lights;
+    private vector<RayObjectPtr> objects;
+
+    public World()
+    :   backgroundColor(0.0, 0, 0), //1, 0.1, 0.1),
+        lights(),
+        objects()
+    {
+    }
+
+    public RayObjectPtr AddSphere(Sphere * sphere)
+    {
+        RayObjectPtr ptr(sphere);
+        objects.push_back(ptr);
+        return objects.back();
+    }
+
+    public void AddObject(const RayObjectPtr obj)
+    {
+        objects.push_back(obj);
+    }
+
+    public void AddLight(const Rgb & rgb, const Vector3 & location, double radius)
+    {
+        lights.push_back(Light(rgb, location, radius));
+    }
+
+
+    public optional<tuple<RayObjectPtr, double> >
+        FindObject(const Vector3 & location, const Vector3 & ray) const
+    {
+        double distance = std::numeric_limits<double>::max();
+        RayObjectPtr currentObj;
+        BOOST_FOREACH(RayObjectPtr obj, objects)
+        {
+            optional<double> dist = obj->DistanceToIntersection(location, ray);
+            if (dist)
+            {
+                if (dist.get() < distance && dist.get() > 0.0)
+                {
+                    distance = dist.get();
+                    currentObj = obj;
+                }
+            }
+        }
+        if (!currentObj)
+        {
+            return boost::none;;
+        }
+        else
+        {
+            return optional<tuple<RayObjectPtr, double>>(
+                    tuple<RayObjectPtr, double>(currentObj, distance));
+        }
+    }
+
+    public inline Rgb GetBackgroundColor() const
+    {
+        return backgroundColor;
+    }
+
+    public const vector<Light> GetLights() const
+    {
+        return lights;
+    }
+
+    public Rgb RayCast(const Vector3 & location, const Vector3 & ray) const
+    {
+        RayTracer tracer(*this);
+        return tracer.RayCast(location, ray).get_value_or(backgroundColor);
+    }
+
+};

@@ -1,0 +1,53 @@
+class Rgb
+{
+    public double R;
+    public double G;
+    public double B;
+
+    public Rgb(const double R, const double G, const double B)
+    : R(R), G(G), B(B) {}
+
+    public Rgb()
+    : R(0.0), G(0.0), B(0.0)
+    {
+        adjust(R);
+        adjust(G);
+        adjust(B);
+    }
+
+    ~hidden inline void add(double & mine, double other)
+    {
+        mine += other;
+        adjust(mine);
+    }
+
+    ~hidden inline void adjust(double & mine)
+    {
+        if (mine > 1.0)
+        {
+            mine = 1.0;
+        }
+        else if (mine < 0.0)
+        {
+            mine = 0.0;
+        }
+    }
+
+    public void operator += (const Rgb & rhs)
+    {
+        add(this->R, rhs.R);
+        add(this->G, rhs.G);
+        add(this->B, rhs.B);
+    }
+
+    public Rgb operator + (const Rgb & rhs)
+    {
+        return Rgb(this->R + rhs.R, this->G + rhs.G, this->B + rhs.B);
+    }
+
+    public Rgb operator * (const double other) const
+    {
+        return Rgb(R * other, G * other, B * other);
+    }
+};
+

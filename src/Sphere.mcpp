@@ -1,0 +1,57 @@
+~import boost::optional;
+~import RayObject;
+~import Vector3;
+
+
+class Sphere : public RayObject
+{
+    public Vector3 Location;
+    public double Radius;
+    public double Reflectance;
+    public double Shiny;
+
+    public Sphere(const Vector3 & location, double radius)
+    :   Location(location),
+        Radius(radius),
+        Reflectance(0.0),
+        Shiny(0.0)
+    {}
+
+    /** Returns the shortest distance from the location to the sphere, or
+     *  none if there is no intersection in the ray's direction. */
+    public virtual optional<double> DistanceToIntersection(
+        const Vector3 & origin, const Vector3 & ray) const
+    {
+        const double a = DotProduct(ray, ray);
+        const double b = DotProduct(origin - Location, ray) * 2;
+        const Vector3 oMc = origin - Location;
+        const double c = DotProduct(oMc, oMc) - (Radius * Radius);
+
+        const double discriminant = (b*b) - (4 * a * c);
+        if (discriminant < 0)  // Ray has missed the sphere.
+        {
+            return boost::none;
+        }
+        const double sqrtDiscriminant = sqrt(discriminant);
+        const double t0 = ((b * -1.0) - sqrtDiscriminant) / (2 * a);
+        const double t1 = ((b * -1.0) + sqrtDiscriminant) / (2 * a);
+        // We're ignoring negative values, since for the camera those will
+        // be behind us.
+        if (t0 < t1 && t0 > 0)
+        {
+            return optional<double>(t0);
+        }
+        if (t1 > 0)
+        {
+            return optional<double>(t1);
+        }
+        return boost::none;
+    }
+
+
+    public virtual const Vector3 GetNormalForLightReflection(
+        const Vector3 & intersection) const
+    {
+        return Normalize(intersection - this->Location);
+    }
+};

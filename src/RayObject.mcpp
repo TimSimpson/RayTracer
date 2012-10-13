@@ -1,0 +1,35 @@
+~import boost::optional;
+~import Rgb;
+~import Vector3;
+
+class RayObject {};
+
+typedef boost::shared_ptr<RayObject ~l> RayObjectPtr;
+
+class RayObject
+{
+    public double Reflectance;
+    public double Shiny;
+
+    public RayObject()
+    :   Reflectance(0.0),
+        Shiny(0.0)
+    {}
+
+    public ~RayObject()
+    {}
+
+    /** Returns the shortest distance from the location to the sphere, or
+     *  none if there is no intersection in the ray's direction. */
+    public virtual optional<double> DistanceToIntersection(
+        const Vector3 & origin, const Vector3 & ray) const = 0;
+
+    public virtual optional<Rgb> ForceColor() const
+    {
+        return boost::none;
+    }
+
+    public virtual const Vector3 GetNormalForLightReflection(
+        const Vector3 & intersection) const = 0;
+};
+

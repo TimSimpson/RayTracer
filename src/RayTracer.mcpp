@@ -1,0 +1,227 @@
+~import BOOST_FOREACH;
+~import boost::optional;
+~import RayObject;
+~import RayObjectPtr;
+~import Rgb;
+~import Vector3;
+~import World;
+
+
+class RayTracer
+{
+    ~import World;
+    private int recursionCounter;
+    private const World & world;
+
+    ~block "cpp"
+    { namespace{
+        const int MAX_RECURSIONS = 10;  // Set to 0 for no reflections.
+    } }
+
+    ~block "cpp-include"
+    {
+        #include <time.h>
+    }
+
+    public RayTracer(const World & world)
+    :   recursionCounter(-1), world(world)
+    {
+    }
+
+    public optional<Rgb> RayCast(const Vector3 & location, const Vector3 & ray)
+    {
+        this->recursionCounter ++;
+        if (this->recursionCounter > MAX_RECURSIONS)
+        {
+            // This gets called from reflection functions, which sum up the
+            // result. So returning 0,0,0 is OK.
+            //return Rgb(0, 0, 0);
+            return boost::none;
+        }
+        auto result = world.FindObject(location, ray);
+        if (!result)
+        {
+            // It's more accurate to return "none" here, but it looks
+            // better to return the background color.
+            return world.GetBackgroundColor();
+            //return boost::none;
+        }
+        else
+        {
+            const RayObjectPtr obj = result.get().get<0>();
+            const auto forceColor = obj->ForceColor();
+            if (forceColor)
+            {
+                return forceColor;
+            }
+            else
+            {
+                const double distance = result.get().get<1>();
+                const Vector3 intersection = (ray * distance) + location;
+                const auto light = gatherLight(ray, obj, intersection);
+                //const auto light = 1.0;
+                return light;
+            }
+        }
+    }
+
+    ~hidden Rgb gatherLight(const Vector3 & viewDirection,
+                            const RayObjectPtr obj,
+                            const Vector3 & intersection)
+    {
+        Rgb diffuseLight;
+        if (obj->Reflectance < 1.0)
+        {
+            diffuseLight = gatherLightMatte(obj, intersection, viewDirection);
+        }
+        optional<Rgb> reflectedLight;
+        if (obj->Reflectance > 0.0)
+        {
+            reflectedLight = gatherLightReflection(viewDirection, obj,
+                                                   intersection);
+        } //end if there is some mirroring
+        Rgb result = diffuseLight * (1.0 - obj->Reflectance);
+        if (reflectedLight)
+        {
+            result += reflectedLight.get() * obj->Reflectance;
+        }
+        return result;
+    }
+
+    ~hidden optional<Rgb> gatherLightReflection(const Vector3 & viewDirection,
+                                      const RayObjectPtr obj,
+                                      const Vector3 & intersection)
+    {
+        // Assume simple surface for now.
+        const auto normal = obj->GetNormalForLightReflection(intersection);
+        // Avoid numerical imperfections caused by using the actual
+        // intersection as our new starting point.
+        const auto smidgedIntersection = intersection + (normal * 0.0001);
+        const auto reflection = Reflect(normal, viewDirection);
+        auto light = RayCast(smidgedIntersection, reflection);
+        return light;
+    }
+
+    ~hidden optional<Rgb> gatherIndividualLightMatteWithShadows(
+        const Vector3 & viewDirection,
+        const Vector3 & normal,
+        const Vector3 & smidgedIntersection,
+        const Light & light)
+    {
+        // From our intersection, we're going to travel to the light source...
+        // but in a cone.  So rather than going directly to the light source,
+        // we randomly send out vectors roughly towards it and see how
+        // close it gets.
+
+        double totalDiffuse = 0;
+        const double shadowRays = 100;
+        for (size_t index = 0; index < shadowRays; index ++)
+        {
+            Vector3 randVector = Normalize(Vector3((rand() / (double)RAND_MAX) * 2 - 1.0,
+                                                    (rand() / (double)RAND_MAX) * 2 - 1.0,
+                                                    (rand() / (double)RAND_MAX) * 2 - 1.0));
+            randVector = randVector * ((rand()/(double)RAND_MAX) * 10.0);
+            Vector3 randLightLocation = light.Location + randVector;
+
+            const Vector3 lightRay = randLightLocation - smidgedIntersection;
+
+            const auto lightValue = getherIndividualLightMatteLuminance(
+                viewDirection, normal, smidgedIntersection, light, lightRay);
+            if (lightValue)
+            {
+                totalDiffuse += lightValue.get();
+            }
+        } //end light ray index
+        return light.Color * (totalDiffuse/shadowRays);
+        return boost::none;
+    } //end soft shadow function
+
+    ~hidden optional<Rgb> gatherIndividualLightMatte(
+        const Vector3 & intersection,
+        const Vector3 & viewDirection,
+        const Vector3 & normal,
+        const Vector3 & smidgedIntersection,
+        const Light & light)
+    {
+
+        const Vector3 lightRay = light.Location - intersection;
+        return gatherIndividualLightMatteWithRay(
+            viewDirection, normal, smidgedIntersection, light, lightRay);
+    }
+
+    ~hidden optional<double> getherIndividualLightMatteLuminance(
+        const Vector3 & viewDirection,
+        const Vector3 & normal,
+        const Vector3 & smidgedIntersection,
+        const Light & light,
+        const Vector3 & lightRay)
+    {
+        const Vector3 lightDirection = Normalize(lightRay);
+
+        //cast ray into scene, get distance and object as resturned values
+        auto result = world.FindObject(smidgedIntersection, lightDirection);
+        if (!result ||
+            (result && result.get().get<1>() > lightRay.ComputeLength()))
+        {
+            // No obstacles, we have light!
+            const double lightDiffuse = DotProduct(lightDirection, normal);
+            const Vector3 H = Normalize(lightDirection + (viewDirection * -1.0) );
+            const double shinninessParameter = 10.3;
+            const double BlinnPhong = pow(DotProduct(normal, H),
+                                          shinninessParameter);
+            return (lightDiffuse*0.99 + BlinnPhong*0.99);
+        }
+        return boost::none;
+    }
+
+    ~hidden optional<Rgb> gatherIndividualLightMatteWithRay(
+        const Vector3 & viewDirection,
+        const Vector3 & normal,
+        const Vector3 & smidgedIntersection,
+        const Light & light,
+        const Vector3 & lightRay)
+    {
+        auto luminance = getherIndividualLightMatteLuminance(
+            viewDirection, normal, smidgedIntersection, light, lightRay);
+        if (luminance)
+        {
+            return light.Color * luminance.get();
+        }
+        return boost::none;
+    }
+
+    ~hidden Rgb gatherLightMatte(const RayObjectPtr obj,
+                                 const Vector3 & intersection,
+                                 const Vector3 & viewDirection)
+    {
+        // Assume simple surface for now.
+        const auto normal = obj->GetNormalForLightReflection(intersection);
+        // Avoid numerical imperfections caused by using the actual
+        // intersection as our new starting point.
+        const auto smidgedIntersection = intersection + (normal * 0.0001);
+        Rgb diffuse;
+        BOOST_FOREACH(const Light & light, world.GetLights())
+        {
+            optional<Rgb> increment = gatherIndividualLightMatteWithShadows(
+                //intersection,
+                viewDirection, normal, smidgedIntersection,
+                light);
+            if (increment)
+            {
+                diffuse += increment.get();
+            }
+            /*const int totalShadowRays = 1;
+            for(int shadowRayIndex = 0; shadowRayIndex < totalShadowRays; shadowRayIndex++)
+            {
+                //first need to figure out the direction of this shadow ray
+                const Vector3 randomVec =
+
+            } //end shadowRayIndex
+            */
+            //diffuse = diffuse / (double)totalShadowRays;
+
+        } //end each light source
+        return diffuse;
+    }
+
+};

@@ -1,0 +1,10 @@
+class Screen
+{
+    public unsigned int Height;
+    public unsigned int Width;
+
+    public Screen(int width, int height)
+    :   Height(height), Width(width)
+    {
+    }
+};
