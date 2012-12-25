@@ -9,7 +9,6 @@
 
 class RayTracer
 {
-    ~import World;
     private int recursionCounter;
     private const World & world;
 

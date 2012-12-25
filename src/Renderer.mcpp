@@ -2,6 +2,9 @@
 
 
 class Renderer
+/*
+ *  Draws pixels.
+ */
 {
     public virtual ~Renderer(){}
 

@@ -1,4 +1,5 @@
 class Screen
+/* Information on screen resolution. */
 {
     public unsigned int Height;
     public unsigned int Width;

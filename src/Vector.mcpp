@@ -3,6 +3,7 @@
 
 
 class Vector3
+/* Typical Vector class used for 3D location and directions. */
 {
     private bool computeLength;
     private double length;
