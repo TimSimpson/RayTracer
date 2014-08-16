@@ -25,13 +25,6 @@ SimpleProject{
   dependencies = {
     load("Macaroni", "Boost-headers", "1.55"):Target("lib"),
     load("Macaroni", "CppStd", "2003"):Target("lib"),
-    --load("Lp3", "Lp3.Engine.Core", "0.1.0"):Target("lib"),
   },
-  -- bjamFlags = bjamFlags,
 };
 
-oldBuild = build
-function build()
-    oldBuild()
-    os.execute([[target\bin\msvc-11.0\release\threading-multi\Demo.exe]])
-end
