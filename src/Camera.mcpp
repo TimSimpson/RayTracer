@@ -9,7 +9,16 @@
 ~import World;
 
 class Camera
+/*
+ * We use the camera to draw the World object to the screen.
+ */
 {
+    ~block "cpp-include"
+    {
+        #include <future>
+        #include <thread>
+    }
+
     public double aspectRatio;
     public Vector3 forward;
     public double frustrum;
@@ -19,8 +28,8 @@ class Camera
     public Vector3 up;
     public Vector3 viewDown;
     public Vector3 viewLeft;
-    public Vector3 viewRight;
-    public Vector3 viewUp;
+    //public Vector3 viewRight;
+    //public Vector3 viewUp;
 
     ~block "cpp" { namespace {
         const double PI = 3.14;
@@ -36,14 +45,14 @@ class Camera
         screen(854, 427), //screen(600, 600), //screen(854, 480), // 640 x 480 + stuff to make it = 16 x 9
         up(0, 0, 0),
         viewDown(0, 0, 0),
-        viewLeft(0, 0, 0),
-        viewRight(0, 0, 0),
-        viewUp(0, 0, 0)
+        viewLeft(0, 0, 0)
+        //viewRight(0, 0, 0),
+        //viewUp(0, 0, 0)
     {
         SetDirection(Vector3(0, 0, -1));
     }
 
-    public void DrawScreen(World & world, Renderer & renderer)
+    /*public void DrawScreen(World & world, Renderer & renderer)
     {
         for (unsigned int x = 0; x < screen.Width; x ++)
         {
@@ -65,24 +74,82 @@ class Camera
                 renderer.PSet(screen.Width - x, screen.Height - y, rgb);
             } //end y
         } //end x
-    } //end drawScreen function
+    } //end drawScreen function*/
+
+    ~block "cpp"
+    {
+        struct DotDraw
+        {
+            Camera & camera;
+            World & world;
+            Renderer & renderer;
+            unsigned int x;
+            unsigned int y;
+
+            DotDraw(Camera & camera, World & world, Renderer & renderer,
+                    const unsigned int x, const unsigned int y)
+            : camera(camera), world(world), renderer(renderer), x(x), y(y)
+            {
+            }
+
+            void operator()()
+            {
+                camera.drawPixel(world, renderer, x, y);
+            }
+        };
+    }
+
+    public void DrawScreen(World & world, Renderer & renderer)
+    {
+        vector<std::thread> threads;
+        for (unsigned int x = 0; x < screen.Width; x ++)
+        {
+            for (unsigned int y = 0; y < screen.Height; y ++)
+            {
+                DotDraw dot(*this, world, renderer, x, y);
+                //std::thread t(dot);
+                //threads.push_back(std::thread(dot));
+                threads.push_back(std::thread(
+                    &Camera::drawPixel, this, world, renderer, x, y
+                    ));
+                //drawPixel(world, renderer, x, y);
+                //t.join();
+            }
+        }
+        BOOST_FOREACH(std::thread & thread, threads)
+        {
+            thread.join();
+        }
+    }
+
+    ~hidden public void drawPixel(World & world, Renderer & renderer,
+                           const unsigned int x, const unsigned int y) const
+    {
+        const double xInterp = (x / (double)screen.Width);
+        const double yInterp = (y / (double)screen.Height);
+        const auto dir = computeRay(xInterp, yInterp);
+        Rgb rgb = world.RayCast(location, dir);
+        // Y is pointed down, X points left, so flip it.
+        renderer.PSet(screen.Width - x, screen.Height - y, rgb);
+    }
 
     /** Finds the angle of the ray shooting out of the camera at xInterp
      *  and yInterp, which range from 0.0 to +1.0. These values relate to
      *  the pixel cordinates of the eventual image. */
-    ~hidden Vector3 computeRay(const double xInterp, const double yInterp)
+    ~hidden Vector3 computeRay(const double xInterp, const double yInterp) const
     {
         const double frustInterpX = (frustrum * -1.0) * (1.0 - xInterp)
                                     + (frustrum * xInterp);
         const double frustInterpY = (frustrum * -1.0 * aspectRatio)
                                     * (1.0 - yInterp)
                                     + (frustrum * aspectRatio * yInterp);
-        viewUp = Normalize(forward * cos(frustInterpY)
+        const auto viewUp = Normalize(forward * cos(frustInterpY)
                            + up * sin(frustInterpY));
         const double xComponent = cos(frustInterpY);
 
-        viewRight = Normalize(forward * (cos(frustInterpX) * xComponent)
-                              + side * (sin(frustInterpX) * xComponent));
+        const auto viewRight =
+            Normalize(forward * (cos(frustInterpX) * xComponent)
+            + side * (sin(frustInterpX) * xComponent));
         // Because these are on different axises, we can just add them.
         const auto sum = viewUp + viewRight;
         return Normalize(sum);
@@ -110,12 +177,12 @@ class Camera
         location = point;
     }
 
-    private void updateFrustrum()
+    ~hidden void updateFrustrum()
     {
         const double frusY = frustrum * aspectRatio;
-        viewUp = Normalize(forward * cos(frusY) + up * sin(frusY));
+        //viewUp = Normalize(forward * cos(frusY) + up * sin(frusY));
         viewDown = Normalize(forward * cos(frusY) - up * sin(frusY));
-        viewRight = Normalize(forward * cos(frustrum) + side * sin(frustrum));
+        //viewRight = Normalize(forward * cos(frustrum) + side * sin(frustrum));
         viewLeft = Normalize(forward * cos(frustrum) - side * sin(frustrum));
     }
 };
