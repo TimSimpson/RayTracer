@@ -23,7 +23,7 @@ SimpleProject{
   target="target",
   libShortName="Lp3Ray",
   dependencies = {
-    load("Macaroni", "Boost-headers", "1.51"):Target("lib"),
+    load("Macaroni", "Boost-headers", "1.55"):Target("lib"),
     load("Macaroni", "CppStd", "2003"):Target("lib"),
     --load("Lp3", "Lp3.Engine.Core", "0.1.0"):Target("lib"),
   },
